@@ -6,9 +6,6 @@ venv/
 __pycache__/
 *.pyc
 
-# CSVs e dados temporários (opcional)
-*.csv
-
 # Config do VSCode ou PyCharm
 .vscode/
 .idea/
