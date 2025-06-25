@@ -1,0 +1,14 @@
+# Ignore virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# CSVs e dados temporários (opcional)
+*.csv
+
+# Config do VSCode ou PyCharm
+.vscode/
+.idea/
