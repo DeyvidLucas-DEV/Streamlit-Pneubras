@@ -1,5 +1,11 @@
 import streamlit as st
 
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+if not st.session_state["authenticated"]:
+    st.switch_page("pages/login.py")
+
 st.set_page_config(
     page_title="Portal de Dashboards - Pneubras",
     page_icon="📊",
