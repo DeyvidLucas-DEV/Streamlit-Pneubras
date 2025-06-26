@@ -28,7 +28,7 @@ def responsavel_bar(df: pd.DataFrame):
             y=responsavel_counts.index,
             x=responsavel_counts.values,
             orientation='h',
-            marker_color='#FF6347'
+            marker_color='#4DB6AC'
         ))
         fig.update_layout(
             title_text='Top 10 Responsáveis por Tarefas (Contagem Individual)',
