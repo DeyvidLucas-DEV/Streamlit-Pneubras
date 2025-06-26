@@ -25,7 +25,7 @@ def temporal_area(df: pd.DataFrame):
         y='count',
         title='Volume de Tarefas Criadas por Dia',
         labels={'DATA_DIA': 'Data', 'count': 'Número de Tarefas Criadas'},
-        color_discrete_sequence=['#FF7F50']
+        color_discrete_sequence=['rgba(66, 165, 245, 0.4)']
     )
 
     return fig

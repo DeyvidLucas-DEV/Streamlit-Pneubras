@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 
 
 def prioridade_hist(df: pd.DataFrame):
@@ -15,13 +16,21 @@ def prioridade_hist(df: pd.DataFrame):
                      font=dict(size=16))]
         )
     else:
-        fig.add_trace(go.Histogram(
-            x=df['PRIORIDADE'].dropna(),
-            name='Prioridade',
-            marker_color='#FFA500'
-        ))
+        color_map = {
+            'nenhuma': '#CFD8DC',
+            'high': '#FFF176',
+            'urgente': '#FF9800',
+            'normal': '#90CAF9'
+        }
+
+        fig = px.histogram(
+            df.dropna(subset=['PRIORIDADE']),
+            x='PRIORIDADE',
+            color='PRIORIDADE',
+            color_discrete_map=color_map,
+            title='Distribuição de Prioridade das Tarefas'
+        )
         fig.update_layout(
-            title_text='Distribuição de Prioridade das Tarefas',
             xaxis_title='Prioridade',
             yaxis_title='Contagem'
         )

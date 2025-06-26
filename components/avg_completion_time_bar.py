@@ -43,7 +43,7 @@ def avg_completion_time_bar(df: pd.DataFrame):
         y=avg_time.index,
         x=avg_time.values,
         orientation='h',
-        marker_color='#FF8C00'
+        marker_color='#9575CD'
     ))
 
     fig.update_layout(

@@ -38,7 +38,13 @@ def monthly_activity_bar(df: pd.DataFrame):
 
     monthly_activity_counts.sort_values(by='MES_ANO_ORDEM', inplace=True)
 
-    cores_quentes = ['#d32f2f', '#ff7043', '#ffa726', '#ffca28', '#ffeb3b']
+    color_map = {
+        'bug': '#EF9A9A',
+        'criação': '#64B5F6',
+        'melhorias': '#4CAF50',
+        'atualizações de versão': '#9575CD',
+        'input via banco': '#FFF176'
+    }
 
     fig = px.bar(
         monthly_activity_counts,
@@ -49,7 +55,7 @@ def monthly_activity_bar(df: pd.DataFrame):
         labels={'MES_ANO_LABEL': 'Mês de Criação', 'count': 'Quantidade de Tarefas',
                 coluna_tipo: 'Tipo de Solicitação'},
         barmode='group',
-        color_discrete_sequence=cores_quentes
+        color_discrete_map=color_map
     )
 
     fig.update_layout(
