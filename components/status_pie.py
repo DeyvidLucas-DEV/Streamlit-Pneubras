@@ -3,15 +3,21 @@ import streamlit as st
 
 
 def status_pie(df):
-    """Renderiza o grafico de pizza com a distribuicao de tarefas por status."""
-    status_counts = df["STATUS"].value_counts().reset_index()
-    status_counts.columns = ["Status", "Contagem"]
-    fig = px.pie(
-        status_counts,
-        names="Status",
-        values="Contagem",
-        title="Distribuição por Status",
-        hole=0.4,
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    """
+    Renderiza um gráfico de pizza mostrando a distribuição de tarefas por status.
+    """
+    st.markdown("### Status das Tarefas")
+    st.markdown(
+        "Este gráfico de pizza mostra a distribuição percentual das tarefas filtradas por status (ex: concluídas, em andamento, etc.).")
 
+    status_counts = df["STATUS"].value_counts()
+
+    fig = px.pie(
+        names=status_counts.index,
+        values=status_counts.values,
+        title="Distribuição de Status das Tarefas",
+        hole=0.3,
+    )
+
+    fig.update_traces(textinfo="percent+label", pull=[0.05] * len(status_counts.index))
+    st.plotly_chart(fig, use_container_width=True)

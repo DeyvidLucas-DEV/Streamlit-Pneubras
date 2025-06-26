@@ -1,18 +1,28 @@
 import plotly.express as px
 import streamlit as st
+import pandas as pd
+
 
 
 def temporal_area(df):
-    """Exibe a evolução das tarefas ao longo do tempo."""
-    df_tmp = df.copy()
-    df_tmp["mes"] = df_tmp["CRIADO_EM"].dt.to_period("M").astype(str)
-    evolucao = df_tmp.groupby("mes").size().reset_index(name="quantidade")
+    """
+    Renderiza um gráfico de área mostrando o volume de tarefas criadas ao longo do tempo.
+    """
+    st.markdown("---")
+    st.markdown("### 📈 Evolução Temporal de Tarefas Criadas")
+    st.markdown(
+        "Acompanhe a criação de novas tarefas ao longo do tempo. Este gráfico de área mostra o volume diário de novas demandas, ajudando a visualizar picos de trabalho.")
+
+    df['DATA_CRIACAO'] = pd.to_datetime(df['CRIADO_EM']).dt.date
+    daily_counts = df.groupby('DATA_CRIACAO').size().reset_index(name='count')
+
     fig = px.area(
-        evolucao,
-        x="mes",
-        y="quantidade",
-        title="Tarefas Criadas por Mês",
-        markers=True,
+        daily_counts,
+        x='DATA_CRIACAO',
+        y='count',
+        title='Volume de Tarefas Criadas por Dia',
+        labels={'DATA_CRIACAO': 'Data', 'count': 'Número de Tarefas Criadas'}
     )
+
     st.plotly_chart(fig, use_container_width=True)
 
