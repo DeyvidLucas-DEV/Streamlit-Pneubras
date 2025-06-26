@@ -9,9 +9,12 @@ pip install -r requirements.txt
 streamlit run 2_Dashboard_IQE.py
 ```
 
+Ao abrir o aplicativo utilize a opção **Login** da barra lateral para se autenticar. O dashboard só é exibido para usuários logados.
+
 ## Estrutura do projeto
 
 - `app.py` &mdash; aplicação principal do Streamlit.
+- `2_Dashboard_IQE.py` &mdash; página do dashboard IQE (requer login).
 - `components/` &mdash; módulos contendo cada gráfico do dashboard.
 - `assets/logo/` &mdash; pasta reservada para a logo da Pneubras.
 - `TABLE_EXPORT_DATA.csv` &mdash; base de dados utilizada pelo dashboard.
