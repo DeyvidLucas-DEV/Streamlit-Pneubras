@@ -1,5 +1,5 @@
 import streamlit as st
-import oracledb
+import psycopg2
 import pandas as pd
 from datetime import datetime  # <-- ADICIONE ESTA LINHA
 
@@ -7,13 +7,16 @@ from datetime import datetime  # <-- ADICIONE ESTA LINHA
 @st.cache_resource
 def init_connection():
     try:
-        dsn = oracledb.makedsn(st.secrets["oracle"]["host"], st.secrets["oracle"]["port"],
-                               service_name=st.secrets["oracle"]["service_name"])
-        connection = oracledb.connect(user=st.secrets["oracle"]["user"], password=st.secrets["oracle"]["password"],
-                                      dsn=dsn)
+        connection = psycopg2.connect(
+            host=st.secrets["postgres"]["host"],
+            port=st.secrets["postgres"]["port"],
+            dbname=st.secrets["postgres"]["database"],
+            user=st.secrets["postgres"]["user"],
+            password=st.secrets["postgres"]["password"],
+        )
         return connection
-    except oracledb.Error as e:
-        st.error(f"Erro ao conectar ao Oracle DB: {e}")
+    except psycopg2.Error as e:
+        st.error(f"Erro ao conectar ao PostgreSQL DB: {e}")
         return None
 
 
@@ -26,8 +29,8 @@ def run_query(start_date: datetime, end_date: datetime) -> pd.DataFrame:
 
             query = f"""
                 SELECT {colunas_necessarias}
-                FROM ad_tarefasclickup
-                WHERE CRIADO_EM BETWEEN :start_d AND :end_d
+                FROM tb_oracle.ad_tarefasclickup
+                WHERE CRIADO_EM BETWEEN %(start_d)s AND %(end_d)s
             """
 
             params = {'start_d': start_date, 'end_d': end_date}
@@ -63,3 +66,4 @@ def run_query(start_date: datetime, end_date: datetime) -> pd.DataFrame:
             return pd.DataFrame()
     else:
         return pd.DataFrame()
+
