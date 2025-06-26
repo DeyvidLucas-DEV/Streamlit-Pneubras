@@ -11,7 +11,7 @@ if "authenticated" not in st.session_state:
 # Se o usuário já estiver autenticado na sessão, redireciona
 if st.session_state["authenticated"]:
     st.success("Você já está autenticado!")
-    st.switch_page("app.py")
+    st.switch_page("pages/2_Dashboard_IQE.py")
     st.stop()
 
 st.title("Autenticação de Usuário")
@@ -47,7 +47,7 @@ with st.form("login_form"):
                     st.session_state["user"] = username
 
                     st.success("Autenticado com sucesso!")
-                    st.switch_page("app.py")
+                    st.switch_page("pages/2_Dashboard_IQE.py")
                 else:
                     st.error("Credenciais inválidas.")
             else:
