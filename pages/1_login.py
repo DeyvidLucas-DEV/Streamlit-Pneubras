@@ -21,12 +21,22 @@ with st.form("login_form"):
 
     if submitted:
         base_url = os.environ.get("API_BASE_URL", st.secrets.get("API_BASE_URL", "http://10.19.10.65:8105"))
+        access_token = os.environ.get("ACCESS_TOKEN", st.secrets.get("ACCESS_TOKEN", ""))
 
         # 1. FAZ A REQUISIÇÃO POST PARA OBTER O TOKEN
         url = f"{base_url}/ad/api/v1/auth/"
 
+        headers = {}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+
         try:
-            resp = requests.post(url, json={"username": username, "password": password}, timeout=10)
+            resp = requests.post(
+                url,
+                json={"username": username, "password": password},
+                headers=headers,
+                timeout=10,
+            )
 
             if resp.status_code == 200:
                 data = resp.json()
