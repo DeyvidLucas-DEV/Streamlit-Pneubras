@@ -37,6 +37,10 @@ def run_query(start_date: datetime, end_date: datetime) -> pd.DataFrame:
 
             df = pd.read_sql(query, conn, params=params)
 
+            # Padroniza os nomes das colunas para maiúsculo para evitar erros
+            # de chave quando diferentes bancos retornam casing distinto
+            df.columns = [col.upper() for col in df.columns]
+
             def convert_lob_to_str(val):
                 if hasattr(val, 'read'): return val.read()
                 return val
