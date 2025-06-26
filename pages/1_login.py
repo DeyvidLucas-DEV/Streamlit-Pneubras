@@ -2,12 +2,17 @@ import os
 import requests
 import streamlit as st
 
+# --- Configuração da Página ---
 st.set_page_config(page_title="Login", page_icon="🔒")
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
-st.title("Autenticação")
+if st.session_state["authenticated"]:
+    st.success("Você já está autenticado!")
+    st.stop()
+
+st.title("Autenticação de Usuário")
 
 with st.form("login_form"):
     username = st.text_input("Usuário")
@@ -15,20 +20,26 @@ with st.form("login_form"):
     submitted = st.form_submit_button("Entrar")
 
     if submitted:
-        base_url = os.environ.get("API_BASE_URL", st.secrets.get("API_BASE_URL", ""))
+        base_url = os.environ.get("API_BASE_URL", st.secrets.get("API_BASE_URL", "http://10.19.10.65:8105"))
+
+        # 1. FAZ A REQUISIÇÃO POST PARA OBTER O TOKEN
         url = f"{base_url}/ad/api/v1/auth/"
+
         try:
-            resp = requests.post(url, json={"username": username, "password": password})
+            resp = requests.post(url, json={"username": username, "password": password}, timeout=10)
+
             if resp.status_code == 200:
                 data = resp.json()
-                if data is True or data.get("response") is True:
+                if data.get("response") is True:
+                    # 2. GUARDA O TOKEN NA SESSÃO DO UTILIZADOR
                     st.session_state["token"] = data.get("token")
                     st.session_state["authenticated"] = True
+                    st.session_state["user"] = username
                     st.success("Autenticado com sucesso!")
                     st.switch_page("app.py")
                 else:
                     st.error("Credenciais inválidas.")
             else:
-                st.error("Erro ao autenticar.")
-        except Exception:
-            st.error("Não foi possível conectar ao servidor de autenticação.")
+                st.error(f"Erro ao autenticar (Código: {resp.status_code}).")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Não foi possível conectar ao servidor: {e}")

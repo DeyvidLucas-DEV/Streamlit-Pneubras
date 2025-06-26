@@ -6,7 +6,7 @@ Dashboard interativo da Pneubras desenvolvido em [Streamlit](https://streamlit.i
 
 ```bash
 pip install -r requirements.txt
-streamlit run 1_Dashboard_IQE.py
+streamlit run 2_Dashboard_IQE.py
 ```
 
 ## Estrutura do projeto
