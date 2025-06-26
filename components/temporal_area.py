@@ -1,28 +1,31 @@
-import plotly.express as px
-import streamlit as st
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
+def temporal_area(df: pd.DataFrame):
+    fig = go.Figure()
+    coluna_data = 'DATA_CRIACAO'
 
+    if df.empty or coluna_data not in df.columns:
+        fig.update_layout(
+            title_text='Evolução Temporal de Tarefas Criadas',
+            xaxis_showgrid=False, yaxis_showgrid=False,
+            xaxis_visible=False, yaxis_visible=False,
+            annotations=[dict(text="Não há dados para os filtros selecionados.", xref="paper", yref="paper", showarrow=False, font=dict(size=16))]
+        )
+        return fig
 
-def temporal_area(df):
-    """
-    Renderiza um gráfico de área mostrando o volume de tarefas criadas ao longo do tempo.
-    """
-    st.markdown("---")
-    st.markdown("### 📈 Evolução Temporal de Tarefas Criadas")
-    st.markdown(
-        "Acompanhe a criação de novas tarefas ao longo do tempo. Este gráfico de área mostra o volume diário de novas demandas, ajudando a visualizar picos de trabalho.")
-
-    df['DATA_CRIACAO'] = pd.to_datetime(df['CRIADO_EM']).dt.date
-    daily_counts = df.groupby('DATA_CRIACAO').size().reset_index(name='count')
+    df_chart = df.copy()
+    df_chart['DATA_DIA'] = pd.to_datetime(df_chart[coluna_data]).dt.date
+    daily_counts = df_chart.groupby('DATA_DIA').size().reset_index(name='count')
 
     fig = px.area(
         daily_counts,
-        x='DATA_CRIACAO',
+        x='DATA_DIA',
         y='count',
         title='Volume de Tarefas Criadas por Dia',
-        labels={'DATA_CRIACAO': 'Data', 'count': 'Número de Tarefas Criadas'}
+        labels={'DATA_DIA': 'Data', 'count': 'Número de Tarefas Criadas'},
+        color_discrete_sequence=['#FF7F50']
     )
 
-    st.plotly_chart(fig, use_container_width=True)
-
+    return fig

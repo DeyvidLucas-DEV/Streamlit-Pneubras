@@ -1,26 +1,20 @@
 import streamlit as st
 
-st.set_page_config(
-    page_title="Portal de Dashboards - Pneubras",
-    page_icon="📊",
-    layout="wide"
-)
-
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if not st.session_state["authenticated"]:
-    st.warning("👋 Por favor, faça o login para aceder aos dashboards.")
-    st.info("Utilize a página de 'Login' na barra lateral para se autenticar.")
+    st.warning("👋 Por favor, faça o login para continuar.")
+    st.info("Acesse a página de 'Login' na barra lateral.")
     st.stop()
 
-st.title("Portal de Dashboards da Pneubras")
-st.sidebar.success("Selecione um dashboard no menu acima.")
+with st.sidebar:
+    st.write(f"Usuário: {st.session_state.get('user', 'N/A')}")
+    if st.button("Logout"):
+        st.session_state["authenticated"] = False
+        st.session_state["user"] = None
+        st.session_state["token"] = None
+        st.rerun()
 
-st.markdown(
-    """
-    ### Bem-vindo ao seu portal de análises!
-
-    Você está autenticado e pode aceder a todos os recursos.
-    """
-)
+st.title("Bem-vindo ao Dashboard de Análise de Tarefas da Pneubras")
+st.markdown("Utilize o menu lateral para navegar entre as páginas.")

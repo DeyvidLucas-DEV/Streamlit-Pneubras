@@ -8,8 +8,10 @@ st.set_page_config(page_title="Login", page_icon="🔒")
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
+# Se o usuário já estiver autenticado na sessão, redireciona
 if st.session_state["authenticated"]:
     st.success("Você já está autenticado!")
+    st.switch_page("app.py")
     st.stop()
 
 st.title("Autenticação de Usuário")
@@ -23,9 +25,7 @@ with st.form("login_form"):
         base_url = os.environ.get("API_BASE_URL", st.secrets.get("API_BASE_URL", "http://10.19.10.65:8105"))
         access_token = os.environ.get("ACCESS_TOKEN", st.secrets.get("ACCESS_TOKEN", ""))
 
-        # 1. FAZ A REQUISIÇÃO POST PARA OBTER O TOKEN
         url = f"{base_url}/ad/api/v1/auth/"
-
         headers = {}
         if access_token:
             headers["Authorization"] = f"Bearer {access_token}"
@@ -41,10 +41,11 @@ with st.form("login_form"):
             if resp.status_code == 200:
                 data = resp.json()
                 if data.get("response") is True:
-                    # 2. GUARDA O TOKEN NA SESSÃO DO UTILIZADOR
+                    # Salva as informações diretamente na sessão
                     st.session_state["token"] = data.get("token")
                     st.session_state["authenticated"] = True
                     st.session_state["user"] = username
+
                     st.success("Autenticado com sucesso!")
                     st.switch_page("app.py")
                 else:

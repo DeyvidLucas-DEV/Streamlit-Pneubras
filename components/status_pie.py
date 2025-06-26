@@ -1,23 +1,34 @@
-import plotly.express as px
-import streamlit as st
+import plotly.graph_objects as go
+import pandas as pd
 
 
-def status_pie(df):
-    """
-    Renderiza um gráfico de pizza mostrando a distribuição de tarefas por status.
-    """
-    st.markdown("### Status das Tarefas")
-    st.markdown(
-        "Este gráfico de pizza mostra a distribuição percentual das tarefas filtradas por status (ex: concluídas, em andamento, etc.).")
+def status_pie(df: pd.DataFrame):
+    fig = go.Figure()
 
-    status_counts = df["STATUS"].value_counts()
+    if df.empty:
+        fig.update_layout(
+            title_text='Distribuição de Status das Tarefas',
+            xaxis_showgrid=False, yaxis_showgrid=False,
+            xaxis_visible=False, yaxis_visible=False,
+            annotations=[
+                dict(text="Não há dados para os filtros selecionados.", xref="paper", yref="paper", showarrow=False,
+                     font=dict(size=16))]
+        )
+    else:
+        status_counts = df['STATUS'].value_counts()
+        cores_quentes = ['#d32f2f', '#ff7043', '#ffa726', '#ffca28', '#ffeb3b']
 
-    fig = px.pie(
-        names=status_counts.index,
-        values=status_counts.values,
-        title="Distribuição de Status das Tarefas",
-        hole=0.3,
-    )
+        fig.add_trace(go.Pie(
+            labels=status_counts.index,
+            values=status_counts.values,
+            hole=.3,
+            marker=dict(colors=cores_quentes, line=dict(color='#ffffff', width=2))
+        ))
+        fig.update_layout(
+            title_text='Distribuição de Status das Tarefas',
+            legend_title_text='Status',
+            uniformtext_minsize=12,
+            uniformtext_mode='hide'
+        )
 
-    fig.update_traces(textinfo="percent+label", pull=[0.05] * len(status_counts.index))
-    st.plotly_chart(fig, use_container_width=True)
+    return fig

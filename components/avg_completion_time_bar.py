@@ -1,50 +1,55 @@
-import streamlit as st
 import pandas as pd
-import plotly.express as px
+import plotly.graph_objects as go
 
 
-def avg_completion_time_bar(df):
-    """
-    Renderiza um gráfico de barras mostrando o tempo médio de conclusão por tipo de solicitação.
-    """
-    st.markdown("---")
-    st.markdown("### ⏱️ Tempo Médio de Conclusão por Tipo de Solicitação")
-    st.markdown("""
-    Este gráfico de barras mostra o tempo médio, em dias, para concluir tarefas, agrupado por tipo de solicitação. 
-    Ajuda a identificar quais tipos de demanda levam mais tempo para serem resolvidas.
-    """)
+def avg_completion_time_bar(df: pd.DataFrame):
+    fig = go.Figure()
+    coluna_data_criacao = 'DATA_CRIACAO'
+    coluna_data_conclusao = 'DATA_CONCLUSAO'
+    coluna_responsavel = 'RESPONSAVEL'
+    required_cols = [coluna_data_criacao, coluna_data_conclusao, coluna_responsavel]
 
-    if 'TIPO_SOLICITACAO' not in df.columns:
-        st.warning("A coluna 'TIPO_SOLICITACAO' é necessária para este gráfico.")
-        return
+    if df.empty or not all(col in df.columns for col in required_cols):
+        fig.update_layout(
+            title_text='Tempo Médio de Conclusão por Responsável',
+            xaxis_showgrid=False, yaxis_showgrid=False,
+            xaxis_visible=False, yaxis_visible=False,
+            annotations=[
+                dict(text="Não há dados para os filtros selecionados.", xref="paper", yref="paper", showarrow=False,
+                     font=dict(size=16))]
+        )
+        return fig
 
-    df_completed = df.dropna(subset=['CRIADO_EM', 'CONCLUIDO_EM']).copy()
-
-    # Converte as colunas para datetime, caso ainda não estejam
-    df_completed['CRIADO_EM'] = pd.to_datetime(df_completed['CRIADO_EM'])
-    df_completed['CONCLUIDO_EM'] = pd.to_datetime(df_completed['CONCLUIDO_EM'])
+    df_completed = df.dropna(subset=[coluna_data_criacao, coluna_data_conclusao]).copy()
 
     if df_completed.empty:
-        st.info("Não há dados de tarefas concluídas com datas válidas para calcular o tempo médio de conclusão.")
-        return
+        fig.update_layout(
+            title_text='Tempo Médio de Conclusão por Responsável',
+            xaxis_showgrid=False, yaxis_showgrid=False,
+            xaxis_visible=False, yaxis_visible=False,
+            annotations=[dict(text="Não há tarefas concluídas para calcular o tempo médio.", xref="paper", yref="paper",
+                              showarrow=False, font=dict(size=16))]
+        )
+        return fig
 
-    df_completed['DURACAO_DIAS'] = (df_completed['CONCLUIDO_EM'] - df_completed['CRIADO_EM']).dt.days
+    df_completed['TEMPO_EM_DIAS'] = (df_completed[coluna_data_conclusao] - df_completed[coluna_data_criacao]).dt.days
+    df_completed[coluna_responsavel] = df_completed[coluna_responsavel].astype(str)
+    df_completed['nomes_individuais'] = df_completed[coluna_responsavel].str.split(',\s*')
+    df_exploded = df_completed.explode('nomes_individuais')
+    df_exploded['nomes_individuais'] = df_exploded['nomes_individuais'].str.strip()
+    avg_time = df_exploded.groupby('nomes_individuais')['TEMPO_EM_DIAS'].mean().nlargest(10).sort_values()
 
-    avg_time_by_type = df_completed.groupby('TIPO_SOLICITACAO')['DURACAO_DIAS'].mean().sort_values(ascending=False)
-
-    fig = px.bar(
-        avg_time_by_type,
-        y=avg_time_by_type.index,
-        x=avg_time_by_type.values,
+    fig.add_trace(go.Bar(
+        y=avg_time.index,
+        x=avg_time.values,
         orientation='h',
-        title='Tempo Médio de Conclusão (dias) por Tipo de Solicitação',
-        labels={'y': 'Tipo de Solicitação', 'x': 'Tempo Médio de Conclusão (dias)'}
-    )
+        marker_color='#FF8C00'
+    ))
 
     fig.update_layout(
-        xaxis_title="Tempo Médio (dias)",
-        yaxis_title="Tipo de Solicitação",
-        yaxis={'categoryorder': 'total ascending'}
+        title='Top 10 - Tempo Médio de Conclusão por Responsável (em Dias)',
+        xaxis_title='Dias para Concluir (Média)',
+        yaxis_title='Responsável'
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    return fig

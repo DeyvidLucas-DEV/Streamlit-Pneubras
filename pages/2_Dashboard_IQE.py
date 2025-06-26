@@ -1,120 +1,163 @@
 import streamlit as st
 import pandas as pd
+from datetime import date, datetime
 
-# Importando os componentes de visualização
+# Verificação de autenticação
+if "authenticated" not in st.session_state or not st.session_state.get("authenticated"):
+    st.warning("👋 Por favor, faça o login para aceder a este dashboard.")
+    st.info("Utilize a página de 'Login' na barra lateral para se autenticar.")
+    st.stop()
+
+# Importação dos componentes e da query
 from components.status_pie import status_pie
 from components.responsavel_bar import responsavel_bar
-from components.temporal_area import temporal_area
 from components.prioridade_hist import prioridade_hist
 from components.monthly_activity_bar import monthly_activity_bar
+from components.temporal_area import temporal_area
 from components.avg_completion_time_bar import avg_completion_time_bar
+from components.ranking_conclusoes import get_ranking_conclusoes
+from config.db_connection import run_query
 
-# Configuração da página
-st.set_page_config(
-    page_title="IQE Dashboard - Pneubras",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+# --- Configuração da Página ---
+st.set_page_config(layout="wide", page_title="Dashboard IQE")
 
+# --- Logo e Título Centralizado ---
+st.markdown("""
+    <style>
+    .centered-title { text-align: center; margin-bottom: 20px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- CARREGAMENTO DOS DADOS ---
-@st.cache_data
-def load_data():
-    """Carrega o arquivo CSV e faz o parse das colunas de data."""
-    df = pd.read_csv("TABLE_EXPORT_DATA.csv")
-    # Converte colunas de data, tratando erros
-    for col in ["CRIADO_EM", "ATUALIZADO_EM", "FECHADO_EM", "CONCLUIDO_EM"]:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors="coerce", dayfirst=True)
-    return df
-
-
-df = load_data()
-
-col1, col2, col3 = st.columns([4, 1, 4]) # ANTES: [3, 2, 3]
-
-with col2:
+col_logo1, col_logo2, col_logo3 = st.columns([1, 0.5, 1])
+with col_logo2:
     try:
-        st.image('assets/logo/pneubras_logo.png', use_container_width=True)
+        st.image("assets/logo/pneubras_logo.png", use_container_width=True)
     except Exception:
-        st.markdown("<p style='text-align: center; color: grey;'><i>Logo não encontrado. Verifique o caminho 'assets/logo/pneubras_logo.png'</i></p>", unsafe_allow_html=True)
+        st.warning("Adicione o arquivo 'logo.png' ao projeto para exibir a logo.")
 
+st.markdown("<h1 class='centered-title'>Indice de Qualidade de Entregas (IQE)</h1>", unsafe_allow_html=True)
 
-st.markdown(
-    "<h1 style='text-align: center; color: black;'>📊 Índice de Qualidade de Entrega (IQE) </h1>",
-    unsafe_allow_html=True,
-)
-st.markdown("---")
+# --- Lógica de Carregamento e Filtros ---
 
-# --- SIDEBAR E FILTROS ---
 with st.sidebar:
-    st.header("🔍 Filtros")
+    st.header('Filtros')
 
-    # Filtro por data de criação
-    data_min = df["CRIADO_EM"].min().date()
-    data_max = df["CRIADO_EM"].max().date()
-    data_range = st.date_input("Filtrar por Data de Criação", [data_min, data_max])
+    # Placeholders para os filtros que dependem dos dados
+    status_filter_placeholder = st.empty()
+    responsavel_filter_placeholder = st.empty()
 
-    # Filtros multiselect
-    status = st.multiselect("Status", df["STATUS"].dropna().unique(), default=list(df["STATUS"].dropna().unique()))
-    prioridade = st.multiselect("Prioridade", df["PRIORIDADE"].dropna().unique(),
-                                default=list(df["PRIORIDADE"].dropna().unique()))
-    responsavel = st.multiselect("Responsável", df["RESPONSAVEL_UNICO"].dropna().unique(),
-                                 default=list(df["RESPONSAVEL_UNICO"].dropna().unique()))
-    if 'TIPO_SOLICITACAO' in df.columns:
-        tipo_solicitacao = st.multiselect("Tipo de Solicitação", df["TIPO_SOLICITACAO"].dropna().unique(),
-                                          default=list(df["TIPO_SOLICITACAO"].dropna().unique()))
-    else:
-        tipo_solicitacao = []
+    # Filtro de data é o primeiro a ser renderizado
+    today = date.today()
+    start_of_year = datetime(today.year, 1, 1)
 
-# --- APLICAÇÃO DOS FILTROS ---
-start_date = pd.to_datetime(data_range[0])
-end_date = pd.to_datetime(data_range[1])
-df_filtered = df[(df["CRIADO_EM"] >= start_date) & (df["CRIADO_EM"] <= end_date) & (df["STATUS"].isin(status)) & (
-    df["PRIORIDADE"].isin(prioridade)) & (df["RESPONSAVEL_UNICO"].isin(responsavel))]
-if 'TIPO_SOLICITACAO' in df.columns and tipo_solicitacao:
-    df_filtered = df_filtered[df_filtered["TIPO_SOLICITACAO"].isin(tipo_solicitacao)]
+    date_filter = st.date_input(
+        'Filtrar por Data de Criação',
+        value=[start_of_year.date(), today],
+        key='date_selector'
+    )
 
-# --- EXIBIÇÃO DO DASHBOARD ---
+if not date_filter or len(date_filter) != 2:
+    st.warning("Por favor, selecione um intervalo de datas válido para carregar os dados.")
+    st.stop()
 
-# KPIs
-st.markdown("### 🔢 Métricas Gerais")
+start_date, end_date = date_filter
 
-# --- Linha 1 de KPIs ---
+# Chama a query com as datas para carregar os dados de forma otimizada
+df = run_query(start_date=datetime.combine(start_date, datetime.min.time()),
+               end_date=datetime.combine(end_date, datetime.max.time()))
+
+if df.empty:
+    st.warning("Não foram encontrados dados para o período selecionado.")
+    st.stop()
+
+# Agora popula os filtros de multiselect com os dados carregados
+with st.sidebar:
+    # Converte valores para string para evitar erros com None
+    status_options = sorted([str(s) for s in df['STATUS'].unique()])
+    responsavel_options = sorted([str(r) for r in df['RESPONSAVEL'].unique()])
+
+    status_filter = status_filter_placeholder.multiselect(
+        'Filtrar por Status',
+        options=status_options,
+        default=status_options
+    )
+    responsavel_filter = responsavel_filter_placeholder.multiselect(
+        'Filtrar por Responsável',
+        options=responsavel_options,
+        default=responsavel_options
+    )
+
+# Aplicação dos filtros
+df_filtered = df.copy()
+
+# Converte as colunas do DataFrame para string antes de comparar com os filtros
+if status_filter:
+    df_filtered = df_filtered[df_filtered['STATUS'].astype(str).isin(status_filter)]
+if responsavel_filter:
+    df_filtered = df_filtered[df_filtered['RESPONSAVEL'].astype(str).isin(responsavel_filter)]
+
+# --- Seção de KPIs Principais ---
+total_tarefas = df_filtered.shape[0]
+tarefas_concluidas = df_filtered[df_filtered['STATUS'] == 'complete'].shape[0]
+percentual_conclusao = (tarefas_concluidas / total_tarefas) * 100 if total_tarefas > 0 else 0
+
 col1, col2, col3 = st.columns(3)
-col1.metric("💾 Total de Tarefas", len(df_filtered))
-col2.metric("✅ Concluídas", (df_filtered["STATUS"] == "complete").sum())
-col3.metric("🕔 Abertas", (df_filtered["STATUS"] != "complete").sum())
+col1.metric("Total de Tarefas", f"{total_tarefas}")
+col2.metric("Tarefas Concluídas", f"{tarefas_concluidas}")
+col3.metric("Taxa de Conclusão", f"{percentual_conclusao:.2f}%")
 
-# --- Linha 2 de KPIs (com o novo KPI) ---
-df_completed_kpi = df_filtered.dropna(subset=['CRIADO_EM', 'CONCLUIDO_EM'])
-if not df_completed_kpi.empty:
-    duracao_media = (df_completed_kpi['CONCLUIDO_EM'] - df_completed_kpi['CRIADO_EM']).mean()
-    avg_time_str = f"{duracao_media.days}d {duracao_media.seconds // 3600}h"
+# --- Ranking Top 3 ---
+st.markdown("---")
+st.subheader("🏆 Ranking de Performance - Top 3 Conclusões")
+st.caption("Os três colaboradores que mais concluíram tarefas no período selecionado.")
+
+top_3_responsaveis = get_ranking_conclusoes(df_filtered)
+
+if not top_3_responsaveis.empty:
+    cols_ranking = st.columns(len(top_3_responsaveis))
+    medals = ["🥇", "🥈", "🥉"]
+    for i, (nome, contagem) in enumerate(top_3_responsaveis.items()):
+        with cols_ranking[i]:
+            st.metric(label=f"{medals[i]} {nome}", value=f"{contagem} Tarefas Concluídas")
 else:
-    avg_time_str = "N/A"
-
-col4, col5, col6 = st.columns(3)
-col4.metric("👨‍💻 Responsáveis únicos", df_filtered["RESPONSAVEL_UNICO"].nunique())
-col5.metric("⏳ Tempo Médio de Conclusão", avg_time_str)
-# col6 está livre para o próximo KPI, como o de SLA.
+    st.info("Não há dados de conclusão suficientes para gerar o ranking no período selecionado.")
 
 st.markdown("---")
 
-# Gráficos em colunas
-col_a, col_b = st.columns(2)
-with col_a:
-    status_pie(df_filtered)
-with col_b:
-    responsavel_bar(df_filtered)
+# --- Visualizações (Gráficos) ---
+col_graf_1, col_graf_2 = st.columns(2)
+with col_graf_1:
+    st.subheader("📊 Distribuição de Status das Tarefas")
+    st.caption("Visão rápida do fluxo de trabalho através da proporção de tarefas em cada status.")
+    st.plotly_chart(status_pie(df_filtered), use_container_width=True)
 
-# Gráficos de largura total
-temporal_area(df_filtered)
-prioridade_hist(df_filtered)
-monthly_activity_bar(df_filtered)
-avg_completion_time_bar(df_filtered)  # <-- NOVO GRÁFICO
+with col_graf_2:
+    st.subheader("🏆 Top 10 Responsáveis por Tarefas")
+    st.caption("Exibe os 10 colaboradores com mais tarefas atribuídas (contagem individual).")
+    st.plotly_chart(responsavel_bar(df_filtered), use_container_width=True)
 
-# Tabela de dados
-st.markdown("---")
-st.markdown("### 📄 Tabela de Tarefas Filtradas")
-st.dataframe(df_filtered)
+col_graf_3, col_graf_4 = st.columns(2)
+with col_graf_3:
+    st.subheader("🟧 Distribuição de Prioridade")
+    st.caption("Histograma que agrupa as tarefas por nível de prioridade.")
+    st.plotly_chart(prioridade_hist(df_filtered), use_container_width=True)
+
+with col_graf_4:
+    st.subheader("🗓️ Volume Mensal por Tipo de Solicitação")
+    st.caption("Compara o volume de tarefas criadas a cada mês, separadas por tipo.")
+    st.plotly_chart(monthly_activity_bar(df_filtered), use_container_width=True)
+
+col_graf_5, col_graf_6 = st.columns(2)
+with col_graf_5:
+    st.subheader("📈 Evolução de Tarefas Criadas")
+    st.caption("Gráfico de área que mostra o volume diário de novas tarefas.")
+    st.plotly_chart(temporal_area(df_filtered), use_container_width=True)
+
+with col_graf_6:
+    st.subheader("⏱️ Tempo Médio de Conclusão")
+    st.caption("Ranking do tempo médio (em dias) que os responsáveis levam para concluir uma tarefa.")
+    st.plotly_chart(avg_completion_time_bar(df_filtered), use_container_width=True)
+
+# --- Tabela de Dados Detalhada ---
+with st.expander("Visualizar dados detalhados"):
+    st.dataframe(df_filtered)

@@ -1,29 +1,29 @@
-import plotly.express as px
-import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
 
 
-def prioridade_hist(df):
-    """
-    Renderiza um histograma da distribuição de tarefas por prioridade.
-    """
-    st.markdown("---")
-    st.markdown("### Prioridade das Tarefas")
-    st.markdown(
-        "Este histograma ilustra a distribuição das tarefas com base em seu nível de prioridade. Ajuda a entender se a maioria das tarefas é de alta, média ou baixa prioridade.")
+def prioridade_hist(df: pd.DataFrame):
+    fig = go.Figure()
 
-    fig = px.histogram(
-        df,
-        x="PRIORIDADE",
-        title="Distribuição de Tarefas por Prioridade",
-        category_orders={
-            "PRIORIDADE": df["PRIORIDADE"].value_counts().index.tolist()
-        },
-        labels={'PRIORIDADE': 'Nível de Prioridade'},
-    )
+    if df.empty or 'PRIORIDADE' not in df.columns:
+        fig.update_layout(
+            title_text='Distribuição de Prioridade das Tarefas',
+            xaxis_showgrid=False, yaxis_showgrid=False,
+            xaxis_visible=False, yaxis_visible=False,
+            annotations=[
+                dict(text="Não há dados para os filtros selecionados.", xref="paper", yref="paper", showarrow=False,
+                     font=dict(size=16))]
+        )
+    else:
+        fig.add_trace(go.Histogram(
+            x=df['PRIORIDADE'].dropna(),
+            name='Prioridade',
+            marker_color='#FFA500'
+        ))
+        fig.update_layout(
+            title_text='Distribuição de Prioridade das Tarefas',
+            xaxis_title='Prioridade',
+            yaxis_title='Contagem'
+        )
 
-    fig.update_layout(
-        yaxis_title="Quantidade de Tarefas"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
+    return fig

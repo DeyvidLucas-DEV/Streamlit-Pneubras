@@ -1,42 +1,61 @@
-import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+import locale
 
 
-def monthly_activity_bar(df):
+def monthly_activity_bar(df: pd.DataFrame):
+    fig = go.Figure()
+    coluna_data = 'DATA_CRIACAO'
+    coluna_tipo = 'TIPO_SOLICITACAO'
 
-    st.markdown("---")
-    st.markdown("### 📊 Evolução Mensal por Tipo de Solicitação")
-    st.markdown("""
-    Este gráfico de colunas mostra o volume de tarefas criadas a cada mês, agrupadas pelo tipo de solicitação. 
-    Use-o para identificar tendências e comparar a carga de trabalho entre diferentes tipos de solicitações ao longo do tempo.
-    """)
-
-    if 'TIPO_SOLICITACAO' not in df.columns:
-        st.warning("A coluna 'TIPO_SOLICITACAO' não foi encontrada no arquivo para gerar o gráfico de evolução mensal.")
-        return
+    if df.empty or coluna_tipo not in df.columns or coluna_data not in df.columns:
+        fig.update_layout(
+            title_text='Volume Mensal de Tarefas por Tipo de Solicitação',
+            xaxis_showgrid=False, yaxis_showgrid=False,
+            xaxis_visible=False, yaxis_visible=False,
+            annotations=[
+                dict(text="Não há dados para os filtros selecionados.", xref="paper", yref="paper", showarrow=False,
+                     font=dict(size=16))]
+        )
+        return fig
 
     df_chart = df.copy()
-    df_chart['MES_ANO'] = df_chart['CRIADO_EM'].dt.to_period('M').astype(str)
+    try:
+        locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+    except locale.Error:
+        try:
+            locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
+        except locale.Error:
+            pass
 
-    monthly_activity_counts = df_chart.groupby(['MES_ANO', 'TIPO_SOLICITACAO']).size().reset_index(name='count')
+    df_chart['MES_ANO_ORDEM'] = df_chart[coluna_data].dt.strftime('%Y-%m')
+    df_chart['MES_ANO_LABEL'] = df_chart[coluna_data].dt.strftime('%b - %Y').str.upper()
+
+    monthly_activity_counts = df_chart.groupby(
+        ['MES_ANO_ORDEM', 'MES_ANO_LABEL', coluna_tipo]
+    ).size().reset_index(name='count')
+
+    monthly_activity_counts.sort_values(by='MES_ANO_ORDEM', inplace=True)
+
+    cores_quentes = ['#d32f2f', '#ff7043', '#ffa726', '#ffca28', '#ffeb3b']
 
     fig = px.bar(
         monthly_activity_counts,
-        x='MES_ANO',
+        x='MES_ANO_LABEL',
         y='count',
-        color='TIPO_SOLICITACAO',  # Usa a coluna correta
+        color=coluna_tipo,
         title='Volume Mensal de Tarefas por Tipo de Solicitação',
-        labels={'MES_ANO': 'Mês', 'count': 'Número de Tarefas', 'TIPO_SOLICITACAO': 'Tipo de Solicitação'},
-        # Corrige a legenda
-        barmode='group'
+        labels={'MES_ANO_LABEL': 'Mês de Criação', 'count': 'Quantidade de Tarefas',
+                coluna_tipo: 'Tipo de Solicitação'},
+        barmode='group',
+        color_discrete_sequence=cores_quentes
     )
 
     fig.update_layout(
         xaxis_title="Mês de Criação",
         yaxis_title="Quantidade de Tarefas",
-        legend_title="Tipo de Solicitação",  # Corrige o título da legenda
-        xaxis={'type': 'category'}
+        legend_title="Tipo de Solicitação",
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    return fig
