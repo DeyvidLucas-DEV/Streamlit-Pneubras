@@ -1,39 +1,46 @@
 import pandas as pd
-import plotly.graph_objects as go
-
+import plotly.express as px
 
 def responsavel_bar(df: pd.DataFrame):
-    fig = go.Figure()
-    coluna_responsavel = 'RESPONSAVEL'
+    """
+    Cria um gráfico de barras com os top 10 responsáveis por quantidade de tarefas,
+    contando individualmente e exibindo apenas membros da Unitec.
+    """
+    # Lista de membros da Unitec para verificação
+    unitec_members = [
+        'Lucas Matheus', 'Priscila Coriolano', 'Raphael Marques Martorella',
+        'Vitor Andrade', 'Sósthenes Mendonça', 'Deyvid Lucas Amorim',
+        'Emerson Ximenes', 'Flavio Emanuel'
+    ]
 
-    if df.empty or coluna_responsavel not in df.columns:
-        fig.update_layout(
-            title_text='Top 10 Responsáveis por Tarefas',
-            xaxis_showgrid=False, yaxis_showgrid=False,
-            xaxis_visible=False, yaxis_visible=False,
-            annotations=[
-                dict(text="Não há dados para os filtros selecionados.", xref="paper", yref="paper", showarrow=False,
-                     font=dict(size=16))]
-        )
-    else:
-        df_chart = df.copy()
-        df_chart.dropna(subset=[coluna_responsavel], inplace=True)
-        df_chart[coluna_responsavel] = df_chart[coluna_responsavel].astype(str)
-        df_chart['nomes_individuais'] = df_chart[coluna_responsavel].str.split(',\s*')
-        df_exploded = df_chart.explode('nomes_individuais')
-        df_exploded['nomes_individuais'] = df_exploded['nomes_individuais'].str.strip()
-        responsavel_counts = df_exploded['nomes_individuais'].value_counts().nlargest(10).sort_values()
+    if 'RESPONSAVEL' not in df.columns or df.empty:
+        return px.bar(title="Não há dados de responsáveis para exibir")
 
-        fig.add_trace(go.Bar(
-            y=responsavel_counts.index,
-            x=responsavel_counts.values,
-            orientation='h',
-            marker_color='#4DB6AC'
-        ))
-        fig.update_layout(
-            title_text='Top 10 Responsáveis por Tarefas (Contagem Individual)',
-            xaxis_title='Número de Tarefas Atribuídas',
-            yaxis_title='Responsável'
-        )
+    df_copy = df.copy()
 
+    # 1. Separar nomes em tarefas de grupo
+    df_copy['RESPONSAVEL'] = df_copy['RESPONSAVEL'].astype(str).str.split(r'\s*,\s*')
+    df_exploded = df_copy.explode('RESPONSAVEL')
+    df_exploded['RESPONSAVEL'] = df_exploded['RESPONSAVEL'].str.strip()
+
+    # 2. A VERIFICAÇÃO: Filtrar para manter apenas os membros da Unitec
+    df_unitec_only = df_exploded[df_exploded['RESPONSAVEL'].isin(unitec_members)]
+
+    # 3. Contar tarefas por responsável verificado
+    responsavel_counts = df_unitec_only['RESPONSAVEL'].value_counts().nlargest(10).sort_values(ascending=True)
+
+    if responsavel_counts.empty:
+        return px.bar(title="Nenhum membro da Unitec encontrado nos filtros atuais")
+
+    # 4. Criar o gráfico
+    fig = px.bar(
+        responsavel_counts,
+        x=responsavel_counts.values,
+        y=responsavel_counts.index,
+        orientation='h',
+        labels={'x': 'Quantidade de Tarefas', 'y': 'Responsável'},
+        text=responsavel_counts.values
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
     return fig

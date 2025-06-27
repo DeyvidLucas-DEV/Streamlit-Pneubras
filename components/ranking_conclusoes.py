@@ -1,24 +1,36 @@
 import pandas as pd
 
-
 def get_ranking_conclusoes(df: pd.DataFrame):
+    """
+    Calcula os 3 principais responsáveis por tarefas concluídas,
+    contando individualmente em tarefas de grupo e verificando se são da Unitec.
+    """
+    # Lista de membros da Unitec para verificação final
+    unitec_members = [
+        'Lucas Matheus', 'Priscila Coriolano', 'Raphael Marques Martorella',
+        'Vitor Andrade', 'Sósthenes Mendonça', 'Deyvid Lucas Amorim',
+        'Emerson Ximenes', 'Flavio Emanuel'
+    ]
 
-    if df.empty or 'STATUS' not in df.columns or 'RESPONSAVEL' not in df.columns:
+    if 'RESPONSAVEL' not in df.columns or 'STATUS' not in df.columns or df.empty:
         return pd.Series(dtype='int64')
 
-    # Filtra apenas as tarefas com status 'complete'
+    # 1. Filtrar apenas tarefas 'complete'
     df_completed = df[df['STATUS'] == 'complete'].copy()
-
     if df_completed.empty:
         return pd.Series(dtype='int64')
 
-    # Lógica para contar individualmente tarefas em grupo
-    df_completed['RESPONSAVEL'] = df_completed['RESPONSAVEL'].astype(str)
-    df_completed['nomes_individuais'] = df_completed['RESPONSAVEL'].str.split(',\s*')
-    df_exploded = df_completed.explode('nomes_individuais')
-    df_exploded['nomes_individuais'] = df_exploded['nomes_individuais'].str.strip()
+    # 2. Separar nomes em tarefas de grupo
+    df_completed['RESPONSAVEL'] = df_completed['RESPONSAVEL'].astype(str).str.split(r'\s*,\s*')
+    df_exploded = df_completed.explode('RESPONSAVEL')
 
-    # Conta as ocorrências e pega os 3 maiores
-    top_3 = df_exploded['nomes_individuais'].value_counts().nlargest(3)
+    # 3. Remover espaços em branco extras dos nomes
+    df_exploded['RESPONSAVEL'] = df_exploded['RESPONSAVEL'].str.strip()
 
-    return top_3
+    # 4. A VERIFICAÇÃO: Manter apenas os membros da Unitec na contagem
+    df_unitec_only = df_exploded[df_exploded['RESPONSAVEL'].isin(unitec_members)]
+
+    # 5. Calcular o ranking com os dados verificados
+    ranking = df_unitec_only['RESPONSAVEL'].value_counts().nlargest(3)
+
+    return ranking

@@ -74,7 +74,14 @@ if df.empty:
 with st.sidebar:
     # Converte valores para string para evitar erros com None
     status_options = sorted([str(s) for s in df['STATUS'].unique()])
-    responsavel_options = sorted([str(r) for r in df['RESPONSAVEL'].unique()])
+
+    # TAREFA 2 CORRIGIDA: Usa a lista fixa de membros da Unitec no filtro
+    unitec_members = [
+        'Lucas Matheus', 'Priscila Coriolano', 'Raphael Marques Martorella',
+        'Vitor Andrade', 'Sósthenes Mendonça', 'Deyvid Lucas Amorim',
+        'Emerson Ximenes', 'Flavio Emanuel'
+    ]
+    responsavel_options = unitec_members
 
     status_filter = status_filter_placeholder.multiselect(
         'Filtrar por Status',
@@ -90,11 +97,14 @@ with st.sidebar:
 # Aplicação dos filtros
 df_filtered = df.copy()
 
-# Converte as colunas do DataFrame para string antes de comparar com os filtros
 if status_filter:
     df_filtered = df_filtered[df_filtered['STATUS'].astype(str).isin(status_filter)]
+
+# TAREFA 1 CORRIGIDA: Lógica de filtro para encontrar tarefas em grupo
 if responsavel_filter:
-    df_filtered = df_filtered[df_filtered['RESPONSAVEL'].astype(str).isin(responsavel_filter)]
+    # Cria um padrão de busca para encontrar qualquer um dos nomes selecionados
+    search_pattern = '|'.join(responsavel_filter)
+    df_filtered = df_filtered[df_filtered['RESPONSAVEL'].astype(str).str.contains(search_pattern, regex=True, na=False)]
 
 # --- Seção de KPIs Principais ---
 total_tarefas = df_filtered.shape[0]

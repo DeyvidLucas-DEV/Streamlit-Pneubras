@@ -1,55 +1,57 @@
 import pandas as pd
-import plotly.graph_objects as go
-
+import plotly.express as px
 
 def avg_completion_time_bar(df: pd.DataFrame):
-    fig = go.Figure()
-    coluna_data_criacao = 'DATA_CRIACAO'
-    coluna_data_conclusao = 'DATA_CONCLUSAO'
-    coluna_responsavel = 'RESPONSAVEL'
-    required_cols = [coluna_data_criacao, coluna_data_conclusao, coluna_responsavel]
+    """
+    Calcula o tempo médio de conclusão por responsável da Unitec.
+    """
+    # Lista de membros da Unitec para verificação
+    unitec_members = [
+        'Lucas Matheus', 'Priscila Coriolano', 'Raphael Marques Martorella',
+        'Vitor Andrade', 'Sósthenes Mendonça', 'Deyvid Lucas Amorim',
+        'Emerson Ximenes', 'Flavio Emanuel'
+    ]
 
-    if df.empty or not all(col in df.columns for col in required_cols):
-        fig.update_layout(
-            title_text='Tempo Médio de Conclusão por Responsável',
-            xaxis_showgrid=False, yaxis_showgrid=False,
-            xaxis_visible=False, yaxis_visible=False,
-            annotations=[
-                dict(text="Não há dados para os filtros selecionados.", xref="paper", yref="paper", showarrow=False,
-                     font=dict(size=16))]
-        )
-        return fig
+    cols = ['RESPONSAVEL', 'STATUS', 'DATA_CRIACAO', 'DATA_FINALIZACAO']
+    if any(c not in df.columns for c in cols) or df.empty:
+        return px.bar(title="Dados insuficientes para calcular o tempo médio")
 
-    df_completed = df.dropna(subset=[coluna_data_criacao, coluna_data_conclusao]).copy()
+    # 1. Filtrar tarefas concluídas e com data de finalização
+    df_completed = df[
+        (df['STATUS'] == 'complete') &
+        (pd.notna(df['DATA_FINALIZACAO']))
+    ].copy()
 
     if df_completed.empty:
-        fig.update_layout(
-            title_text='Tempo Médio de Conclusão por Responsável',
-            xaxis_showgrid=False, yaxis_showgrid=False,
-            xaxis_visible=False, yaxis_visible=False,
-            annotations=[dict(text="Não há tarefas concluídas para calcular o tempo médio.", xref="paper", yref="paper",
-                              showarrow=False, font=dict(size=16))]
-        )
-        return fig
+        return px.bar(title="Nenhuma tarefa concluída no período")
 
-    df_completed['TEMPO_EM_DIAS'] = (df_completed[coluna_data_conclusao] - df_completed[coluna_data_criacao]).dt.days
-    df_completed[coluna_responsavel] = df_completed[coluna_responsavel].astype(str)
-    df_completed['nomes_individuais'] = df_completed[coluna_responsavel].str.split(',\s*')
-    df_exploded = df_completed.explode('nomes_individuais')
-    df_exploded['nomes_individuais'] = df_exploded['nomes_individuais'].str.strip()
-    avg_time = df_exploded.groupby('nomes_individuais')['TEMPO_EM_DIAS'].mean().nlargest(10).sort_values()
+    # 2. Calcular o tempo de conclusão em dias
+    df_completed['DATA_CRIACAO'] = pd.to_datetime(df_completed['DATA_CRIACAO'])
+    df_completed['DATA_FINALIZACAO'] = pd.to_datetime(df_completed['DATA_FINALIZACAO'])
+    df_completed['TEMPO_EM_DIAS'] = (df_completed['DATA_FINALIZACAO'] - df_completed['DATA_CRIACAO']).dt.total_seconds() / (24 * 3600)
 
-    fig.add_trace(go.Bar(
-        y=avg_time.index,
-        x=avg_time.values,
-        orientation='h',
-        marker_color='#9575CD'
-    ))
+    # 3. Separar nomes em tarefas de grupo
+    df_completed['RESPONSAVEL'] = df_completed['RESPONSAVEL'].astype(str).str.split(r'\s*,\s*')
+    df_exploded = df_completed.explode('RESPONSAVEL')
+    df_exploded['RESPONSAVEL'] = df_exploded['RESPONSAVEL'].str.strip()
 
-    fig.update_layout(
-        title='Top 10 - Tempo Médio de Conclusão por Responsável (em Dias)',
-        xaxis_title='Dias para Concluir (Média)',
-        yaxis_title='Responsável'
+    # 4. A VERIFICAÇÃO: Manter apenas membros da Unitec
+    df_unitec_only = df_exploded[df_exploded['RESPONSAVEL'].isin(unitec_members)]
+
+    # 5. Calcular o tempo médio e ordenar
+    avg_time = df_unitec_only.groupby('RESPONSAVEL')['TEMPO_EM_DIAS'].mean().sort_values(ascending=False)
+
+    if avg_time.empty:
+        return px.bar(title="Nenhum membro da Unitec com tarefas concluídas")
+
+    # 6. Criar o gráfico
+    fig = px.bar(
+        avg_time,
+        x=avg_time.index,
+        y=avg_time.values,
+        labels={'x': 'Responsável', 'y': 'Tempo Médio (dias)'},
+        text=avg_time.values
     )
-
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
     return fig
